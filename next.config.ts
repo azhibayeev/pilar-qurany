@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Явно фиксируем корень воркспейса (в $HOME есть лишний package-lock.json).
+  turbopack: {
+    root: __dirname,
+  },
 };
 
 export default nextConfig;
