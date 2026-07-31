@@ -22,6 +22,7 @@ export default function ResultScreen({
 
   return (
     <div className="mx-auto max-w-xl px-6 pb-20 pt-10">
+      <h1 className="sr-only">Hasil analisis</h1>
       {docsFirst && (
         <p className="mb-6 border-l-2 border-accent pl-4 font-medium leading-snug">
           {/* TODO: копирайтер может уточнить формулировку блока документов */}
