@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Brand from "@/components/Brand";
 import PromiseCard from "@/components/PromiseCard";
 import SocialProof from "@/components/SocialProof";
 import { CONFIG, LANDING } from "@/content/quiz";
@@ -23,6 +24,8 @@ export default async function Home({
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-6 py-16">
+      <Brand wordmark className="mb-8" />
+
       {CONFIG.PROMISE_ABOVE_H1 && (
         <div className="mb-8">
           <PromiseCard />

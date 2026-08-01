@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Brand from "@/components/Brand";
 import PetaMap from "@/components/PetaMap";
 import { PETA, RESULTS } from "@/content/quiz";
 import { buildPeta } from "@/lib/quiz/peta";
@@ -22,6 +23,7 @@ export default function ResultScreen({
   return (
     <div className="mx-auto max-w-xl px-6 pb-20 pt-10">
       <h1 className="sr-only">Hasil analisis</h1>
+      <Brand wordmark className="mb-8" />
 
       {result.flags.docsFirst && (
         <p className="mb-6 border-l-2 border-accent pl-4 font-medium leading-snug">
