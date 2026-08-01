@@ -1,20 +1,19 @@
 "use client";
 
+import Photo from "@/components/Photo";
 import QuoteBlock from "@/components/QuoteBlock";
-import { USTADZ_FIELD_LABEL } from "@/lib/quiz/content";
+import { USTADZ_FIELD_LABEL } from "@/content/quiz";
 import type { Question, QuizAnswers } from "@/lib/quiz/types";
 
 interface Props {
   question: Question;
   answers: QuizAnswers;
-  /** Обновить ответы без перехода. */
   onPatch: (patch: Partial<QuizAnswers>) => void;
-  /** Обновить ответы и перейти дальше (атомарно в родителе). */
   onAnswerAndAdvance: (patch: Partial<QuizAnswers>) => void;
-  /** Перейти дальше с текущими ответами. */
   onAdvance: () => void;
   onBack: () => void;
   canBack: boolean;
+  progress: { step: number; total: number };
 }
 
 export default function QuestionScreen({
@@ -26,7 +25,7 @@ export default function QuestionScreen({
   onBack,
   canBack,
 }: Props) {
-  const isMulti = question.kind === "multi";
+  const isMulti = question.select === "multi";
   const multiSelected = (answers.amal_jariyah ?? []) as string[];
   const singleSelected = answers[question.id as keyof QuizAnswers] as string | undefined;
 
@@ -48,7 +47,7 @@ export default function QuestionScreen({
   function chooseSingle(optId: string) {
     if (question.id === "keputusan") {
       if (optId === "ustadz") {
-        onPatch({ keputusan: "ustadz" }); // остаёмся — покажем поле имени
+        onPatch({ keputusan: "ustadz" });
         return;
       }
       onAnswerAndAdvance({ keputusan: optId, ustadz_nama: undefined });
@@ -79,6 +78,7 @@ export default function QuestionScreen({
       )}
 
       <h2 className="text-xl font-semibold leading-snug tracking-tight">{question.prompt}</h2>
+      {question.hint && <p className="mt-2 text-[0.95rem] text-muted">{question.hint}</p>}
 
       <div className="mt-6 flex flex-col gap-3">
         {question.options.map((o) => {
@@ -89,17 +89,35 @@ export default function QuestionScreen({
               onClick={() => (isMulti ? toggleMulti(o.id, o.exclusive) : chooseSingle(o.id))}
               aria-pressed={selected}
               className={[
-                "flex min-h-14 w-full items-center rounded-xl border px-4 py-3 text-left leading-snug transition-colors",
-                selected
-                  ? "border-accent bg-accent/10 text-fg"
-                  : "border-line bg-white hover:border-accent/50",
+                "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left leading-snug transition-colors",
+                question.withPhotos ? "min-h-[92px]" : "min-h-14",
+                selected ? "border-accent bg-accent/10" : "border-line bg-white hover:border-accent/50",
               ].join(" ")}
             >
-              {o.label}
+              {question.withPhotos && o.photo && (
+                <Photo photoKey={o.photo} eager={question.id === "amal_jariyah"} />
+              )}
+              <span className="flex-1">
+                <span className="block">{o.label}</span>
+                {o.citation && <span className="mt-1 block text-xs text-muted">{o.citation}</span>}
+              </span>
+              {/* Индикатор: квадрат для multi, круг для single. Заливка при выборе. */}
+              <span
+                aria-hidden="true"
+                className={[
+                  "flex h-6 w-6 shrink-0 items-center justify-center border",
+                  isMulti ? "rounded-md" : "rounded-full",
+                  selected ? "border-accent bg-accent text-white" : "border-line",
+                ].join(" ")}
+              >
+                {selected ? (isMulti ? "✓" : "•") : ""}
+              </span>
             </button>
           );
         })}
       </div>
+
+      {question.footnote && <p className="mt-4 text-[0.95rem] text-muted">{question.footnote}</p>}
 
       {showUstadzField && (
         <div className="mt-5">

@@ -2,23 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import ContactForm from "@/components/ContactForm";
+import InsightScreen from "@/components/InsightScreen";
+import PreparingScreen from "@/components/PreparingScreen";
 import ProgressBar from "@/components/ProgressBar";
 import QuestionScreen from "@/components/QuestionScreen";
 import ResultScreen from "@/components/ResultScreen";
-import { QUESTIONS } from "@/lib/quiz/content";
-import { AFTER_CONTACT, BEFORE_CONTACT } from "@/lib/quiz/flow";
+import { INSIGHTS, QUESTIONS } from "@/content/quiz";
+import { questionProgress, QUESTION_ORDER, quizScreens } from "@/lib/quiz/flow";
 import { computeScore } from "@/lib/quiz/scoring";
-import type { LandingVariant, Question, QuizAnswers } from "@/lib/quiz/types";
+import type { LandingVariant, Question, QuestionId, QuizAnswers, ScreenId } from "@/lib/quiz/types";
 import { newEventId, pixelTrack } from "@/lib/pixels";
 import { captureTracking, type Tracking } from "@/lib/tracking";
 
-type ScreenId = string; // id вопроса | "contact" | "result"
-
 const Q_BY_ID = new Map<string, Question>(QUESTIONS.map((q) => [q.id, q]));
+const isQuestion = (s: ScreenId): s is QuestionId => QUESTION_ORDER.includes(s as QuestionId);
 
-function sequence(answers: QuizAnswers): ScreenId[] {
-  const { showQ8 } = computeScore(answers);
-  return [...BEFORE_CONTACT, "contact", ...AFTER_CONTACT, ...(showQ8 ? ["kapasitas"] : []), "result"];
+// Последовательность внутри /kuis (без landing).
+function seq(answers: QuizAnswers): ScreenId[] {
+  return quizScreens(answers).filter((s) => s !== "landing");
 }
 
 const SS_ANSWERS = "pilar_answers";
@@ -31,21 +32,22 @@ export default function KuisPage() {
   const [leadId, setLeadId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [prepDone, setPrepDone] = useState(false);
 
   const contact = useRef<{ nama: string; wa: string }>({ nama: "", wa: "" });
   const variant = useRef<LandingVariant>("a");
   const tracking = useRef<Tracking>({});
   const started = useRef(false);
   const completed = useRef(false);
+  const insightsFired = useRef<Set<string>>(new Set());
 
-  // Инициализация из URL + sessionStorage (перезагрузка не сбрасывает прогресс).
   useEffect(() => {
     try {
       const a = sessionStorage.getItem(SS_ANSWERS);
       const s = sessionStorage.getItem(SS_SCREEN);
       const l = sessionStorage.getItem(SS_LEAD);
       if (a) setAnswers(JSON.parse(a));
-      if (s) setScreen(s);
+      if (s) setScreen(s as ScreenId);
       if (l) setLeadId(l);
     } catch {
       /* ignore */
@@ -60,7 +62,6 @@ export default function KuisPage() {
     }
   }, []);
 
-  // Персист (ответы — не PII; PII/номер держим только в памяти).
   useEffect(() => {
     try {
       sessionStorage.setItem(SS_ANSWERS, JSON.stringify(answers));
@@ -84,28 +85,35 @@ export default function KuisPage() {
       }
   }, [leadId]);
 
-  const seq = sequence(answers);
-  const navScreens = seq.filter((s) => s !== "result");
-  const stepIndex = Math.max(0, navScreens.indexOf(screen));
-
   function nextFrom(current: ScreenId, merged: QuizAnswers): ScreenId {
-    const s = sequence(merged);
+    const s = seq(merged);
     const idx = s.indexOf(current);
     return s[Math.min(idx + 1, s.length - 1)];
   }
   function prevFrom(current: ScreenId): ScreenId {
-    const s = sequence(answers);
+    const s = seq(answers);
     const idx = s.indexOf(current);
     return s[Math.max(idx - 1, 0)];
   }
 
+  function fireArrivalEvents(next: ScreenId, merged: QuizAnswers) {
+    if (isQuestion(next)) {
+      const qs = seq(merged).filter(isQuestion);
+      const idx = qs.indexOf(next);
+      if (idx >= 0) pixelTrack(`QuizStep${idx + 1}`);
+    } else if (next === "insightA" && !insightsFired.current.has("A")) {
+      insightsFired.current.add("A");
+      pixelTrack("InsightViewA");
+    } else if (next === "insightB" && !insightsFired.current.has("B")) {
+      insightsFired.current.add("B");
+      pixelTrack("InsightViewB");
+    }
+  }
+
   function goTo(next: ScreenId, merged: QuizAnswers) {
     setScreen(next);
-    if (next !== "contact" && next !== "result") {
-      const idx = sequence(merged).filter((x) => x !== "result").indexOf(next);
-      if (idx >= 0) pixelTrack(`QuizStep${idx + 1}`);
-    }
-    if (next === "result") void onComplete(merged);
+    fireArrivalEvents(next, merged);
+    if (next === "preparing") void onComplete(merged);
   }
 
   function patch(p: Partial<QuizAnswers>) {
@@ -147,7 +155,6 @@ export default function KuisPage() {
       }
       const j = (await res.json()) as { id: string };
       setLeadId(j.id);
-
       const eid = newEventId();
       pixelTrack("Lead", {}, eid);
       fetch("/api/capi", {
@@ -155,7 +162,6 @@ export default function KuisPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "Lead", eventId: eid, wa: waRaw, nama, fbclid: tracking.current.fbclid }),
       }).catch(() => {});
-
       setSubmitting(false);
       goTo(nextFrom("contact", answers), answers);
     } catch {
@@ -164,13 +170,16 @@ export default function KuisPage() {
     }
   }
 
+  // Финализация: происходит на экране «подготовки». prepDone управляет честным прогрессом.
   async function onComplete(merged: QuizAnswers) {
-    if (completed.current) return;
+    if (completed.current) {
+      setPrepDone(true);
+      return;
+    }
     completed.current = true;
     const r = computeScore(merged);
     pixelTrack("QuizComplete", { tier: r.tier });
     pixelTrack(`Tier${r.tier}`);
-
     const eid = newEventId();
     fetch("/api/capi", {
       method: "POST",
@@ -184,50 +193,68 @@ export default function KuisPage() {
         custom: { tier: r.tier },
       }),
     }).catch(() => {});
-
-    if (leadId) {
-      fetch("/api/lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phase: "complete",
-          id: leadId,
-          nama: contact.current.nama,
-          wa_raw: contact.current.wa,
-          answers: merged,
-          landing_variant: variant.current,
-        }),
-      }).catch(() => {});
+    try {
+      if (leadId) {
+        await fetch("/api/lead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phase: "complete",
+            id: leadId,
+            nama: contact.current.nama,
+            wa_raw: contact.current.wa,
+            answers: merged,
+            landing_variant: variant.current,
+          }),
+        });
+      }
+    } catch {
+      /* результат всё равно покажем — скоринг на клиенте */
     }
+    setPrepDone(true);
   }
 
+  // ── Рендер ──────────────────────────────────────────────────────────────────
   if (screen === "result") {
-    return <ResultScreen result={computeScore(answers)} minatId={answers.minat} />;
+    return <ResultScreen result={computeScore(answers)} answers={answers} />;
+  }
+  if (screen === "preparing") {
+    return <PreparingScreen done={prepDone} onFinish={() => setScreen("result")} />;
+  }
+  if (screen === "insightA" || screen === "insightB") {
+    return (
+      <InsightScreen
+        insight={screen === "insightA" ? INSIGHTS.A : INSIGHTS.B}
+        onNext={advance}
+        onBack={back}
+      />
+    );
+  }
+  if (screen === "contact") {
+    return (
+      <main className="min-h-dvh">
+        <ContactForm onSubmit={submitContact} onBack={back} submitting={submitting} serverError={serverError} />
+      </main>
+    );
   }
 
   const q = Q_BY_ID.get(screen);
+  if (!q) return null;
+  const prog = questionProgress(screen as QuestionId);
 
   return (
     <main className="min-h-dvh">
-      <ProgressBar step={stepIndex + 1} total={navScreens.length} />
-      {screen === "contact" ? (
-        <ContactForm
-          onSubmit={submitContact}
-          onBack={back}
-          submitting={submitting}
-          serverError={serverError}
-        />
-      ) : q ? (
-        <QuestionScreen
-          question={q}
-          answers={answers}
-          onPatch={patch}
-          onAnswerAndAdvance={answerAndAdvance}
-          onAdvance={advance}
-          onBack={back}
-          canBack={stepIndex > 0}
-        />
-      ) : null}
+      <ProgressBar step={prog.step} total={prog.total} />
+      <QuestionScreen
+        question={q}
+        answers={answers}
+        onPatch={patch}
+        onAnswerAndAdvance={answerAndAdvance}
+        onAdvance={advance}
+        onBack={back}
+        canBack={seq(answers).indexOf(screen) > 0}
+        progress={prog}
+      />
     </main>
   );
 }

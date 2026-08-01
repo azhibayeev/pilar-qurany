@@ -1,31 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { minatLine, RESULTS } from "@/lib/quiz/content";
-import type { ScoreResult } from "@/lib/quiz/types";
+import PetaMap from "@/components/PetaMap";
+import { PETA, RESULTS } from "@/content/quiz";
+import { buildPeta } from "@/lib/quiz/peta";
+import type { QuizAnswers, ScoreResult } from "@/lib/quiz/types";
 
-// Балл/тир пользователю НЕ показываются — только текст модели и CTA.
+// Балл и тир пользователю НЕ показываются — только текст модели, CTA и Peta.
 export default function ResultScreen({
   result,
-  minatId,
+  answers,
 }: {
   result: ScoreResult;
-  minatId?: string;
+  answers: QuizAnswers;
 }) {
   const [confirmed, setConfirmed] = useState(false);
   const r = RESULTS[result.tier];
   const cta = result.flags.ctaVariant === "family" && r.ctaFamily ? r.ctaFamily : r.cta;
-  const line = minatLine(minatId);
-
-  // hambatan=percaya → экран начинается с блока «сначала документы».
-  const docsFirst = result.flags.docsFirst;
+  const peta = buildPeta(answers);
 
   return (
     <div className="mx-auto max-w-xl px-6 pb-20 pt-10">
       <h1 className="sr-only">Hasil analisis</h1>
-      {docsFirst && (
+
+      {result.flags.docsFirst && (
         <p className="mb-6 border-l-2 border-accent pl-4 font-medium leading-snug">
-          {/* TODO: копирайтер может уточнить формулировку блока документов */}
+          {/* TODO(review): формулировку блока документов уточнит копирайтер */}
           Mulai dari yang bisa diperiksa — dokumen, bukan janji.
         </p>
       )}
@@ -45,7 +45,15 @@ export default function ResultScreen({
         </p>
       )}
 
-      {line && <p className="mt-5 text-[0.95rem] text-muted">{line}</p>}
+      <PetaMap peta={peta} />
+
+      <button
+        onClick={() => window.print()}
+        className="mt-6 min-h-12 w-full rounded-xl border border-accent px-6 font-medium text-accent transition-colors hover:bg-accent/5"
+      >
+        {PETA.downloadPdf}
+      </button>
+      <p className="mt-3 text-sm text-muted">Dokumen yang sama kami kirim ke WhatsApp.</p>
     </div>
   );
 }

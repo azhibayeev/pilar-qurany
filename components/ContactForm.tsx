@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CONTACT } from "@/lib/quiz/content";
+import { CONTACT } from "@/content/quiz";
 import { isValidWa } from "@/lib/wa";
 
 interface Props {
@@ -84,7 +84,7 @@ export default function ContactForm({ onSubmit, onBack, submitting, serverError 
           <span>
             {CONTACT.consent}{" "}
             <a href="/privasi" target="_blank" className="text-accent underline underline-offset-2">
-              (kebijakan privasi)
+              {CONTACT.consentLink}
             </a>
           </span>
         </label>
