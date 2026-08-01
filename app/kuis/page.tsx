@@ -205,6 +205,7 @@ export default function KuisPage() {
             wa_raw: contact.current.wa,
             answers: merged,
             landing_variant: variant.current,
+            tracking: tracking.current,
           }),
         });
       }

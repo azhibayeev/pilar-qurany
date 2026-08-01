@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { leadStore } from "@/lib/leadStore";
-import { notifyTierA } from "@/lib/notify";
+import { notifyLeadTelegram, notifyTierA } from "@/lib/notify";
 import { computeScore } from "@/lib/quiz/scoring";
 import type { LandingVariant, LeadInput, QuizAnswers } from "@/lib/quiz/types";
 import { normalizeWa } from "@/lib/wa";
@@ -64,20 +64,25 @@ export async function POST(req: Request) {
     answers,
   });
 
-  if (result.tier === "A") {
-    await notifyTierA({
-      id: body.id,
-      nama: (body.nama || "").trim(),
-      wa_raw: body.wa_raw || "",
-      wa_normalized: normalizeWa(body.wa_raw || "") || "",
-      status: "complete",
-      score: result.score,
-      tier: result.tier,
-      anonim: result.flags.anonim,
-      ustadz_nama: answers.ustadz_nama || null,
-      answers,
-    });
-  }
+  const lead: LeadInput & { id?: string } = {
+    id: body.id,
+    nama: (body.nama || "").trim(),
+    wa_raw: body.wa_raw || "",
+    wa_normalized: normalizeWa(body.wa_raw || "") || "",
+    status: "complete",
+    score: result.score,
+    tier: result.tier,
+    anonim: result.flags.anonim,
+    ustadz_nama: answers.ustadz_nama || null,
+    answers,
+    landing_variant: body.landing_variant,
+    ...(body.tracking || {}),
+  };
+
+  // Каждая завершённая заявка → в Telegram.
+  await notifyLeadTelegram(lead);
+  // Опциональный Slack-вебхук при тире A.
+  if (result.tier === "A") await notifyTierA(lead);
 
   return NextResponse.json({ tier: result.tier });
 }
