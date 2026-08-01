@@ -107,10 +107,17 @@ export default function QuestionScreen({
                 className={[
                   "flex h-6 w-6 shrink-0 items-center justify-center border",
                   isMulti ? "rounded-md" : "rounded-full",
-                  selected ? "border-accent bg-accent text-white" : "border-line",
+                  selected ? "border-accent bg-accent" : "border-line",
                 ].join(" ")}
               >
-                {selected ? (isMulti ? "✓" : "•") : ""}
+                {selected &&
+                  (isMulti ? (
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M3 7.5l2.8 2.8L11 4.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : (
+                    <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                  ))}
               </span>
             </button>
           );

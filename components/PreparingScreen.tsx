@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { PREPARING } from "@/content/quiz";
 
+function Check() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M3 7.5l2.8 2.8L11 4.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Честный прогресс: три строки появляются последовательно; финальная «Selesai» — только когда
 // реальный запрос к API завершён (done) И прошло минимум времени, чтобы не мигало. Без псевдо-процентов.
 export default function PreparingScreen({ done, onFinish }: { done: boolean; onFinish: () => void }) {
@@ -44,7 +52,7 @@ export default function PreparingScreen({ done, onFinish }: { done: boolean; onF
                 }`}
                 aria-hidden="true"
               >
-                {complete ? "✓" : ""}
+                {complete && <Check />}
               </span>
               <span className={complete ? "text-fg" : "text-muted"}>{line}</span>
             </li>
@@ -57,7 +65,7 @@ export default function PreparingScreen({ done, onFinish }: { done: boolean; onF
             }`}
             aria-hidden="true"
           >
-            {ready ? "✓" : ""}
+            {ready && <Check />}
           </span>
           <span className={`font-medium ${ready ? "text-fg" : "text-muted"}`}>{finalLine}</span>
         </li>
