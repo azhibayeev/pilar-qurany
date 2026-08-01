@@ -1,15 +1,14 @@
 // Реестр фотографий вариантов ответов. Ключ = "<qN>.<optionId>".
-// Пока все со статусом "placeholder" (сплошной цвет + иконка). Реальные фото — только
-// предметные/средние планы, индонезийский контекст, единый профиль, WebP+AVIF, срсет 144/288.
-// НЕ подставлять случайные стоки — с ними квиз уйдёт в прод. Заменяя, ставь status:"licensed"
-// и заполняй source/license.
+// Реальные фото: предметные/средние планы, лица вне кадра, единый приглушённый профиль,
+// WebP+AVIF, срсет 144/288. НЕ подставлять случайные стоки. Источник — Pexels (лицензия Pexels,
+// коммерческое использование без атрибуции). Обработаны sharp (saturation 0.72 для единого профиля).
+// src1x/src2x указывают на .webp; компонент Photo сам подставит .avif как первый <source>.
 
 export type PhotoStatus = "placeholder" | "licensed";
 
 export interface PhotoEntry {
-  /** 144×144 (1x) и 288×288 (2x). Для placeholder оба указывают на общий SVG. */
-  src1x: string;
-  src2x: string;
+  src1x: string; // 144×144 .webp
+  src2x: string; // 288×288 .webp
   alt: string; // осмысленный alt на bahasa
   source?: string;
   license?: string;
@@ -19,19 +18,29 @@ export interface PhotoEntry {
 const PLACEHOLDER = "/photos/placeholder.svg";
 const ph = (alt: string): PhotoEntry => ({ src1x: PLACEHOLDER, src2x: PLACEHOLDER, alt, status: "placeholder" });
 
+// Лицензионное фото (Pexels). src1x/src2x = webp 144/288; avif выводится заменой расширения.
+const px = (key: string, alt: string): PhotoEntry => ({
+  src1x: `/photos/${key}-144.webp`,
+  src2x: `/photos/${key}-288.webp`,
+  alt,
+  source: "Pexels",
+  license: "Pexels License",
+  status: "licensed",
+});
+
 export const PHOTOS: Record<string, PhotoEntry> = {
   // Q1 · Три дела
-  "q1.jariyah": ph(`Sumur atau saluran air yang mengalir`), // TODO: колодец / водопровод
-  "q1.ilmu": ph(`Buku terbuka dan tangan yang memegangnya`), // TODO: раскрытая книга, руки
-  "q1.anak": ph(`Tangan anak menengadah berdoa`), // TODO: детские ладони в дуа
+  "q1.jariyah": px("q1.jariyah", `Saluran air mengalir di antara ladang`),
+  "q1.ilmu": px("q1.ilmu", `Buku tua terbuka dengan tulisan Arab`),
+  "q1.anak": ph(`Tangan anak menengadah berdoa`), // плейсхолдер: нет чистого фото без лица/дубля
   // Q4 · 30 лет
-  "q4.usaha": ph(`Gudang atau tempat produksi yang berjalan`), // TODO: производство/склад
-  "q4.anak": ph(`Tangan yang tua menggenggam tangan yang muda`), // TODO: руки старшего и младшего
-  "q4.lembaga": ph(`Ruang kelas pondok`), // TODO: класс пондока
+  "q4.usaha": px("q4.usaha", `Bagian dalam gudang dengan rak-rak`),
+  "q4.anak": px("q4.anak", `Tangan dewasa menggenggam tangan anak kecil`),
+  "q4.lembaga": px("q4.lembaga", `Ruang kelas dengan kursi kayu`),
   // Q6 · Часть работы
-  "q6.aplikasi": ph(`Ponsel dengan mushaf terbuka`), // TODO: телефон с открытым мусхафом
-  "q6.pendidikan": ph(`Guru bersama murid-murid di kelas`), // TODO: учитель с учениками
-  "q6.infrastruktur": ph(`Gedung yang sedang dibangun`), // TODO: строящееся здание
+  "q6.aplikasi": px("q6.aplikasi", `Tangan memegang ponsel`),
+  "q6.pendidikan": px("q6.pendidikan", `Tangan mengangkat setumpuk buku`),
+  "q6.infrastruktur": px("q6.infrastruktur", `Gedung yang sedang dibangun`),
 };
 
 export function getPhoto(key: string | undefined): PhotoEntry | null {
