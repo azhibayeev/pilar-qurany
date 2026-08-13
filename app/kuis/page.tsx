@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import ContactForm from "@/components/ContactForm";
 import InsightScreen from "@/components/InsightScreen";
 import PreparingScreen from "@/components/PreparingScreen";
-import ProgressBar from "@/components/ProgressBar";
 import QuestionScreen from "@/components/QuestionScreen";
+import QuizHeader from "@/components/QuizHeader";
 import ResultScreen from "@/components/ResultScreen";
 import { INSIGHTS, QUESTIONS } from "@/content/quiz";
 import { questionProgress, QUESTION_ORDER, quizScreens } from "@/lib/quiz/flow";
@@ -16,6 +17,13 @@ import { captureTracking, type Tracking } from "@/lib/tracking";
 
 const Q_BY_ID = new Map<string, Question>(QUESTIONS.map((q) => [q.id, q]));
 const isQuestion = (s: ScreenId): s is QuestionId => QUESTION_ORDER.includes(s as QuestionId);
+
+// Переходы между экранами: forward — вправо→влево, back — влево→вправо.
+const screenVariants = {
+  enter: (dir: number) => ({ opacity: 0, x: dir >= 0 ? 28 : -28 }),
+  center: { opacity: 1, x: 0 },
+  exit: (dir: number) => ({ opacity: 0, x: dir >= 0 ? -28 : 28 }),
+};
 
 // Последовательность внутри /kuis (без landing).
 function seq(answers: QuizAnswers): ScreenId[] {
@@ -33,6 +41,7 @@ export default function KuisPage() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [prepDone, setPrepDone] = useState(false);
+  const [dir, setDir] = useState(1); // направление перехода: 1 — вперёд, -1 — назад
 
   const contact = useRef<{ nama: string; wa: string }>({ nama: "", wa: "" });
   const variant = useRef<LandingVariant>("a");
@@ -101,16 +110,17 @@ export default function KuisPage() {
       const qs = seq(merged).filter(isQuestion);
       const idx = qs.indexOf(next);
       if (idx >= 0) pixelTrack(`QuizStep${idx + 1}`);
-    } else if (next === "insightA" && !insightsFired.current.has("A")) {
-      insightsFired.current.add("A");
-      pixelTrack("InsightViewA");
-    } else if (next === "insightB" && !insightsFired.current.has("B")) {
-      insightsFired.current.add("B");
-      pixelTrack("InsightViewB");
+    } else if (next.startsWith("insight")) {
+      const key = next.slice("insight".length); // A | B | C | D
+      if (!insightsFired.current.has(key)) {
+        insightsFired.current.add(key);
+        pixelTrack(`InsightView${key}`);
+      }
     }
   }
 
   function goTo(next: ScreenId, merged: QuizAnswers) {
+    setDir(1);
     setScreen(next);
     fireArrivalEvents(next, merged);
     if (next === "preparing") void onComplete(merged);
@@ -128,6 +138,7 @@ export default function KuisPage() {
     goTo(nextFrom(screen, answers), answers);
   }
   function back() {
+    setDir(-1);
     setScreen(prevFrom(screen));
   }
 
@@ -216,36 +227,29 @@ export default function KuisPage() {
   }
 
   // ── Рендер ──────────────────────────────────────────────────────────────────
+  // Полноэкранные спец-экраны — без общей шапки (свой контекст).
   if (screen === "result") {
     return <ResultScreen result={computeScore(answers)} answers={answers} />;
   }
   if (screen === "preparing") {
     return <PreparingScreen done={prepDone} onFinish={() => setScreen("result")} />;
   }
-  if (screen === "insightA" || screen === "insightB") {
-    return (
-      <InsightScreen
-        insight={screen === "insightA" ? INSIGHTS.A : INSIGHTS.B}
-        onNext={advance}
-        onBack={back}
-      />
-    );
-  }
+
+  // Экраны квиза под общей липкой шапкой (вопросы · интерстишлы · контакт).
+  let node: React.ReactNode = null;
+  let counter: { step: number; total: number } | null = null;
+
   if (screen === "contact") {
-    return (
-      <main className="min-h-dvh">
-        <ContactForm onSubmit={submitContact} onBack={back} submitting={submitting} serverError={serverError} />
-      </main>
-    );
-  }
-
-  const q = Q_BY_ID.get(screen);
-  if (!q) return null;
-  const prog = questionProgress(screen as QuestionId);
-
-  return (
-    <main className="min-h-dvh">
-      <ProgressBar step={prog.step} total={prog.total} />
+    node = <ContactForm onSubmit={submitContact} onBack={back} submitting={submitting} serverError={serverError} />;
+  } else if (screen.startsWith("insight")) {
+    const key = screen.slice("insight".length) as "A" | "B" | "C" | "D";
+    node = <InsightScreen insight={INSIGHTS[key]} onNext={advance} onBack={back} />;
+  } else {
+    const q = Q_BY_ID.get(screen);
+    if (!q) return null;
+    const prog = questionProgress(screen as QuestionId);
+    counter = prog;
+    node = (
       <QuestionScreen
         question={q}
         answers={answers}
@@ -256,6 +260,32 @@ export default function KuisPage() {
         canBack={seq(answers).indexOf(screen) > 0}
         progress={prog}
       />
-    </main>
+    );
+  }
+
+  const canBack = seq(answers).indexOf(screen) > 0;
+  const order = seq(answers).filter((s) => s !== "preparing" && s !== "result");
+  const gIdx = order.indexOf(screen);
+  const globalPct = gIdx >= 0 && order.length > 1 ? Math.round(((gIdx + 1) / order.length) * 100) : 100;
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <main className="min-h-dvh overflow-x-hidden">
+        <QuizHeader pct={globalPct} counter={counter} canBack={canBack} onBack={back} />
+        <AnimatePresence mode="wait" custom={dir} initial={false}>
+          <motion.div
+            key={screen}
+            custom={dir}
+            variants={screenVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.28, ease: [0.22, 0.61, 0.36, 1] }}
+          >
+            {node}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+    </MotionConfig>
   );
 }

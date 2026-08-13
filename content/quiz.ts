@@ -159,11 +159,11 @@ export const QUESTIONS: Question[] = [
     intro: `Satu pertanyaan terakhir, dan kami jelaskan alasannya. Kami menanyakan ini agar tidak membuang waktu Bapak/Ibu untuk pembicaraan dengan skala yang tidak sesuai.`,
     prompt: `Berapa kira-kira yang Bapak/Ibu salurkan untuk dakwah dan sosial per bulan saat ini?`,
     options: [
-      { id: "<20", label: `Di bawah 20 juta`, points: 0 },
-      { id: "20-30", label: `20–30 juta`, points: 2 },
-      { id: "30-75", label: `30–75 juta`, points: 6 },
-      { id: "75-150", label: `75–150 juta`, points: 10 },
-      { id: ">150", label: `Di atas 150 juta`, points: 14 },
+      { id: "<20", label: `Di bawah Rp 20 juta`, points: 0 },
+      { id: "20-30", label: `Rp 20–30 juta`, points: 2 },
+      { id: "30-75", label: `Rp 30–75 juta`, points: 6 },
+      { id: "75-150", label: `Rp 75–150 juta`, points: 10 },
+      { id: ">150", label: `Di atas Rp 150 juta`, points: 14 },
       { id: "langsung", label: `Lebih baik dibicarakan langsung`, points: 8 },
     ],
   },
@@ -173,7 +173,7 @@ export const QUESTIONS: Question[] = [
 export const USTADZ_FIELD_LABEL = `Kalau berkenan, sebutkan nama beliau — kami akan menghubungi lewat beliau, bukan mendahului.`;
 
 // ── Инсайты между вопросами ─────────────────────────────────────────────────────
-export const INSIGHTS: { A: Insight; B: Insight } = {
+export const INSIGHTS: Record<"A" | "B" | "C" | "D", Insight> = {
   A: {
     id: "A",
     heading: `Yang paling sering hilang bukan niatnya.`,
@@ -188,6 +188,22 @@ Niat sudah ada pada banyak orang. Yang jarang ada adalah bentuknya.`,
     body: `Sampai di sini Bapak/Ibu sudah menentukan dua hal: amal mana yang sudah berjalan, dan bagaimana nama Bapak/Ibu diperlakukan.
 
 Sisanya tentang arah — apa yang harus tetap ada, dan di bagian mana Bapak/Ibu ingin berada.`,
+    button: `Lanjutkan`,
+  },
+  C: {
+    id: "C",
+    heading: `Hambatan itu wajar — dan hampir selalu soal bentuk.`,
+    body: `Banyak orang berhenti bukan karena kurang niat, tapi karena belum tahu bentuk yang aman dan bisa diperiksa.
+
+Justru di titik inilah Peta membantu: memperjelas langkah berikutnya, bukan menuntut lompatan.`,
+    button: `Lanjutkan`,
+  },
+  D: {
+    id: "D",
+    heading: `Arahnya mulai kelihatan.`,
+    body: `Dari yang Bapak/Ibu pilih, kami sudah bisa menyusun bagian mana yang paling dekat dengan niat Bapak/Ibu.
+
+Satu-dua hal lagi, dan Peta Amal Jariyah-nya lengkap.`,
     button: `Lanjutkan`,
   },
 };
@@ -205,7 +221,25 @@ export const CONTACT = {
 
 // ── Экран подготовки результата ─────────────────────────────────────────────────
 export const PREPARING = {
+  title: `Menyusun Peta Amal Jariyah Bapak/Ibu…`,
   lines: [`Memeriksa jawaban Bapak/Ibu`, `Menyusun Peta Amal Jariyah`, `Menyiapkan dalil dan rujukannya`, `Selesai`],
+};
+
+// ── Доп. копирайт для «сочных» экранов (интерстишлы, форма, лоадер) ───────────────
+// Интерстишлы = промежуточные экраны между вопросами (приём удержания, как у Finelo):
+// разбивают монотонность, повышают ценность результата, создают вовлечённость.
+// visual — разный мотив на каждом интерстишле, чтобы они не были похожи:
+// amal (3 амаль) · progress (пройденные шаги) · steps (лестница) · peta (превью документа).
+export const INTERSTITIAL = {
+  A: { eyebrow: `Wawasan`, visual: `amal`, note: `Tiga amal yang tidak terputus` },
+  B: { eyebrow: `Hampir selesai`, visual: `progress`, note: `Peta Amal Jariyah · 1 halaman · dikirim ke WhatsApp` },
+  C: { eyebrow: `Wawasan`, visual: `steps`, note: `Langkah, bukan lompatan` },
+  D: { eyebrow: `Hampir selesai`, visual: `peta`, note: `Peta Amal Jariyah · 1 halaman · dikirim ke WhatsApp` },
+};
+
+export const CONTACT_EXTRA = {
+  value: `Untuk mengirim Peta Amal Jariyah Bapak/Ibu`,
+  trust: `Data Bapak/Ibu aman. Kami hubungi lewat WhatsApp satu kali saja.`,
 };
 
 // ── Экраны результата по тирам ──────────────────────────────────────────────────
@@ -231,6 +265,18 @@ Bapak/Ibu memberi, tapi belum melihat jejaknya. Mulai dari yang bisa diperiksa: 
 Jujur: saat ini kami tidak meminta apa pun dari Bapak/Ibu, dan tidak akan meminta. Yang masuk akal: satu halaman sebulan sekali tentang apa yang terjadi. Kalau nanti menarik, Bapak/Ibu yang menghubungi kami.`,
     cta: `Terima laporan bulanan`,
   },
+};
+
+// Финал для СИЛЬНЫХ лидов (высокий/средний инвест-потенциал) — вместо «ежемесячного отчёта».
+// Меценат/вакиф финансирует развитие приложения Qurany как непрерывающуюся садаку.
+// ЧЕРНОВИК копирайта — до утверждения владельцем (TODO review).
+export const RESULT_PATRON: { body: string; cta: string; ctaFamily: string; confirm: string } = {
+  body: `Dari jawaban Bapak/Ibu, amal jariyah yang paling sesuai bukan memberi sekali — tapi menghidupi sesuatu yang terus bekerja setelah kita: aplikasi Qurany, agar siapa pun bisa membuka Al-Qur'an tanpa membayar, bertahun-tahun ke depan.
+
+Kami ingin membicarakannya langsung: bagaimana Bapak/Ibu bisa ikut menopang, apa yang sudah berjalan, dan bagaimana nama Bapak/Ibu diperlakukan — semuanya dalam dokumen, bukan sekadar kata.`,
+  cta: `Atur pembicaraan dengan tim Qurany`,
+  ctaFamily: `Atur pembicaraan bersama keluarga`,
+  confirm: `Baik. Tim kami menghubungi Bapak/Ibu lewat WhatsApp untuk mengatur waktu.`,
 };
 
 // ── Peta Amal Jariyah ───────────────────────────────────────────────────────────

@@ -37,8 +37,10 @@ export interface Question {
   options: QuizOption[];
 }
 
+export type InsightId = "A" | "B" | "C" | "D";
+
 export interface Insight {
-  id: "A" | "B";
+  id: InsightId;
   heading: string;
   body: string;
   button: string;
@@ -50,6 +52,8 @@ export type ScreenId =
   | QuestionId
   | "insightA"
   | "insightB"
+  | "insightC"
+  | "insightD"
   | "contact"
   | "preparing"
   | "result";

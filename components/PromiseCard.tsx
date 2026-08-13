@@ -11,7 +11,7 @@ function Check() {
 export default function PromiseCard() {
   const { heading, bullets } = LANDING.promise;
   return (
-    <div className="rounded-2xl border border-line bg-white p-5">
+    <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
       <p className="font-semibold">{heading}</p>
       <ul className="mt-3 flex flex-col gap-2.5">
         {bullets.map((b, i) => (

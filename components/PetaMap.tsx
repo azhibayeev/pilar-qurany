@@ -14,7 +14,7 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 // и нигде больше именование не упоминается. Этот блок — цель печати в PDF (.print-peta).
 export default function PetaMap({ peta }: { peta: PetaData }) {
   return (
-    <section className="print-peta mt-10 rounded-2xl border border-line bg-white p-6">
+    <section className="print-peta mt-10 rounded-2xl border border-line bg-white p-6 shadow-soft">
       <h2 className="text-lg font-semibold">{PETA.title}</h2>
 
       <Block title={PETA.sections.sudah}>

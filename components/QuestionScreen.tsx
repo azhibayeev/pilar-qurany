@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import Photo from "@/components/Photo";
 import QuoteBlock from "@/components/QuoteBlock";
 import { USTADZ_FIELD_LABEL } from "@/content/quiz";
@@ -16,14 +17,22 @@ interface Props {
   progress: { step: number; total: number };
 }
 
+// Карточки появляются каскадом; знак множественного/единичного выбора рисуется пружиной.
+const listVar = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } },
+};
+const itemVar = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.34, ease: [0.22, 0.61, 0.36, 1] as const } },
+};
+
 export default function QuestionScreen({
   question,
   answers,
   onPatch,
   onAnswerAndAdvance,
   onAdvance,
-  onBack,
-  canBack,
 }: Props) {
   const isMulti = question.select === "multi";
   const multiSelected = (answers.amal_jariyah ?? []) as string[];
@@ -61,16 +70,6 @@ export default function QuestionScreen({
 
   return (
     <div className="mx-auto max-w-xl px-6 pb-16 pt-6">
-      {canBack && (
-        <button
-          onClick={onBack}
-          className="mb-6 text-sm text-muted underline-offset-4 hover:underline"
-          aria-label="Kembali"
-        >
-          ← Kembali
-        </button>
-      )}
-
       {question.intro && (
         <div className="mb-6">
           <QuoteBlock>{question.intro}</QuoteBlock>
@@ -80,18 +79,27 @@ export default function QuestionScreen({
       <h2 className="text-xl font-semibold leading-snug tracking-tight">{question.prompt}</h2>
       {question.hint && <p className="mt-2 text-[0.95rem] text-muted">{question.hint}</p>}
 
-      <div className="mt-6 flex flex-col gap-3">
+      <motion.div
+        variants={listVar}
+        initial="hidden"
+        animate="show"
+        className="mt-6 flex flex-col gap-3"
+      >
         {question.options.map((o) => {
           const selected = isMulti ? multiSelected.includes(o.id) : singleSelected === o.id;
           return (
-            <button
+            <motion.button
               key={o.id}
+              variants={itemVar}
               onClick={() => (isMulti ? toggleMulti(o.id, o.exclusive) : chooseSingle(o.id))}
               aria-pressed={selected}
+              whileTap={{ scale: 0.985 }}
               className={[
-                "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left leading-snug transition-colors",
+                "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left leading-snug shadow-soft transition-colors duration-200",
                 question.withPhotos ? "min-h-[92px]" : "min-h-14",
-                selected ? "border-accent bg-accent/10" : "border-line bg-white hover:border-accent/50",
+                selected
+                  ? "border-accent bg-accent/[0.07] ring-1 ring-accent"
+                  : "border-line bg-white hover:border-accent/40",
               ].join(" ")}
             >
               {question.withPhotos && o.photo && (
@@ -101,28 +109,45 @@ export default function QuestionScreen({
                 <span className="block">{o.label}</span>
                 {o.citation && <span className="mt-1 block text-xs text-muted">{o.citation}</span>}
               </span>
-              {/* Индикатор: квадрат для multi, круг для single. Заливка при выборе. */}
+              {/* Индикатор: квадрат для multi, круг для single. Пружинный «поп» + рисование при выборе. */}
               <span
                 aria-hidden="true"
                 className={[
-                  "flex h-6 w-6 shrink-0 items-center justify-center border",
+                  "flex h-6 w-6 shrink-0 items-center justify-center border transition-colors",
                   isMulti ? "rounded-md" : "rounded-full",
                   selected ? "border-accent bg-accent" : "border-line",
                 ].join(" ")}
               >
-                {selected &&
-                  (isMulti ? (
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M3 7.5l2.8 2.8L11 4.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  ) : (
-                    <span className="h-2.5 w-2.5 rounded-full bg-white" />
-                  ))}
+                {selected && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    className="flex items-center justify-center"
+                  >
+                    {isMulti ? (
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <motion.path
+                          d="M3 7.5l2.8 2.8L11 4.5"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          initial={{ pathLength: 0 }}
+                          animate={{ pathLength: 1 }}
+                          transition={{ duration: 0.22, ease: "easeOut" }}
+                        />
+                      </svg>
+                    ) : (
+                      <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                    )}
+                  </motion.span>
+                )}
               </span>
-            </button>
+            </motion.button>
           );
         })}
-      </div>
+      </motion.div>
 
       {question.footnote && <p className="mt-4 text-[0.95rem] text-muted">{question.footnote}</p>}
 
@@ -140,13 +165,14 @@ export default function QuestionScreen({
       )}
 
       {(isMulti || showUstadzField) && (
-        <button
+        <motion.button
           onClick={onAdvance}
           disabled={!canContinue}
-          className="mt-8 min-h-14 w-full rounded-xl bg-accent px-6 text-lg font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40"
+          whileTap={{ scale: 0.98 }}
+          className="mt-8 min-h-14 w-full rounded-xl bg-accent px-6 text-lg font-medium text-white shadow-btn transition-all hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:shadow-none"
         >
           Lanjutkan
-        </button>
+        </motion.button>
       )}
     </div>
   );
